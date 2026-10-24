@@ -197,7 +197,7 @@ tests/cli.rs             端到端测试（真实的 daemon + worker + BN 6.0）
 
 - 阻塞在 C 里的调用无法取消（见上文「取消」）。
 - 没有 trace。
-- 不支持 Windows。
+- Windows 尚未在真机上验证（只做了交叉编译和 CI），遇到问题请提 issue。
 
 ## 许可
 
