@@ -1,0 +1,17 @@
+name: ci
+on:
+  push:
+  pull_request:
+
+# Building bnx needs a Binary Ninja install (BINARYNINJADIR: the core library
+# it links, under a commercial license), which the runners do not have; CI
+# checks formatting only. Build, lint and test on a machine with Binary Ninja.
+jobs:
+  fmt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - run: cargo fmt --check

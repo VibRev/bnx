@@ -28,7 +28,7 @@ cd bnx && BINARYNINJADIR=/path/to/binaryninja cargo build --release
 - **只支持 Binary Ninja 6.0 R2**（`stable/6.0.10905`，API 提交 `775c3b5e`）。
   - `binaryninja` 和 `binaryninjacore-sys` 以 git 依赖固定在这个提交，与安装目录里 `api_REVISION.txt` 记录的一致。
   - worker 启动时会检查加载到的 core 版本，与构建时的目标不一致就报 `engine_error`。
-- **`BINARYNINJADIR`** 指向放 core 动态库的目录。`build.rs` 链接 `libbinaryninjacore` 并写入 rpath，运行时不需要设置 `LD_LIBRARY_PATH`。
+- **`BINARYNINJADIR`** 指向放 core 动态库的目录。`build.rs` 链接 `libbinaryninjacore` 并在 Linux、macOS 上写入 rpath，运行时不需要设置 `LD_LIBRARY_PATH`（Windows 见下）。
 - **license**：运行需要一份可以 headless 使用的 license，放在下面「平台」一节列出的位置，或用 `BN_LICENSE_FILE` 指定。`--help` 和 `ref` 不需要 license。
 
 ## 平台
@@ -40,7 +40,13 @@ cd bnx && BINARYNINJADIR=/path/to/binaryninja cargo build --release
   - Python API 和示例在 app 的 `Contents/Resources/` 下，`ref` 会自动找到；
   - license 默认在 `~/Library/Application Support/Binary Ninja/license.dat`。
 
-daemon 用 Unix socket。
+- **Windows**（10 1803 及以上，x86_64；尚未在真机上验证）：
+  - `BINARYNINJADIR` 设为安装目录（默认 `C:\Program Files\Vector35\BinaryNinja`，里面有 `binaryninjacore.dll`）；构建需要 MSVC 与 LLVM（bindgen 用 libclang）。
+  - Windows 没有 rpath：运行时安装目录要在 `PATH` 上（`$env:PATH = "$env:BINARYNINJADIR;$env:PATH"`）。
+  - license 默认在 `%APPDATA%\Binary Ninja\license.dat`。
+  - skill 和示例里的命令是 bash 写法：PowerShell 里单引号同样不展开，照抄能用；代码里本身有单引号时改用 `-f FILE` / `-`（stdin）。`ref` 列出的 `grep` 在 PowerShell 里换成 `Select-String`。
+
+daemon 用 Unix socket（Windows 上是原生 AF_UNIX）。
 
 ## 命令
 

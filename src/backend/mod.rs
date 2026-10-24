@@ -27,13 +27,22 @@ pub struct BinaryNinja {
     console: Option<Console>,
 }
 
+/// Where Binary Ninja looks for its license by default.
+const LICENSE: &str = if cfg!(windows) {
+    r"%APPDATA%\Binary Ninja\license.dat"
+} else if cfg!(target_os = "macos") {
+    "~/Library/Application Support/Binary Ninja/license.dat"
+} else {
+    "~/.binaryninja/license.dat"
+};
+
 impl Backend for BinaryNinja {
     /// Analysis starts at once and runs in the background; `analyze` waits
     /// for it.
     fn open(launch: &Launch, _channel: &Channel) -> Result<BinaryNinja, WorkerFailure> {
         let session = Session::new().map_err(|e| {
             WorkerFailure::engine(format!("Binary Ninja did not start: {e:?}"))
-                .with_hint("bnx needs a headless-capable license in ~/.binaryninja/license.dat or BN_LICENSE_FILE")
+                .with_hint(format!("bnx needs a headless-capable license in {LICENSE} or BN_LICENSE_FILE"))
         })?;
         let v = binaryninja::version_info();
         if (v.major, v.minor, v.build) != ENGINE {

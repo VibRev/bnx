@@ -13,7 +13,6 @@ categories = ["command-line-utilities"]
 axkit = { version = "0.1.0", path = "../axkit" }
 binaryninja = { git = "https://github.com/Vector35/binaryninja-api.git", rev = "775c3b5eed8598217b20e1087afe7aa092a9b4b1", version = "0.1.0" }
 binaryninjacore-sys = { git = "https://github.com/Vector35/binaryninja-api.git", rev = "775c3b5eed8598217b20e1087afe7aa092a9b4b1", version = "0.1.0" }
-libc = "0.2.191"
 rex = { path = "../rex" }
 serde_json = { version = "1.0.154", features = ["preserve_order"] }
 thiserror = "2.0.21"
