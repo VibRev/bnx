@@ -1,0 +1,257 @@
+# bnx task set for axkit-eval. Same ARM64 fixtures and the same questions as
+# idax/eval/suite.toml, so the two engines can be read side by side. Only the
+# tool name, its env vars and the persisted database extension differ.
+
+[suite]
+name = "bnx-re"
+# The command agents call; `axkit-eval replay` picks its calls from streams.
+tool = "bnx"
+# What `{tool}` says in prompts; MCP groups say their own.
+tool_phrase = "the bnx CLI (already on PATH; run `bnx --help`)"
+setup = ["make -C fixtures"]
+path = ["../target/debug"]
+# Appended to every prompt.
+rules = """
+Rules for this task: do not copy, move or read license files (for example \
+*.hexlic or license.dat), and do not change HOME, IDAUSR or the engine's user \
+directory. If the tool you were given cannot run (it does not start, a license or \
+permission error), report that instead of working around it. Errors from your \
+own scripts (a wrong name, an exception) are normal: read the hint and go on."""
+teardown = ["bnx daemon stop --force >/dev/null 2>&1 || true"]
+
+[suite.env]
+BNX_RUNTIME_DIR = "{tmp}/rt"
+XDG_CACHE_HOME = "{tmp}/cache"
+AXKIT_AGENT = "on"
+
+[[task]]
+id = "password"
+prompt = """
+The file {ws}/crackme is an ARM64 program that checks a command-line password. \
+Use {tool} to find the exact password \
+string it compares against, and state it verbatim."""
+files = ["fixtures/crackme"]
+[task.judge]
+contains = ["s3cret_42"]
+
+[[task]]
+id = "xor-flag"
+prompt = """
+{ws}/xorflag decodes a hidden flag at runtime; the plaintext is not stored in \
+the binary. Use {tool} to read the code or data, work out the decoding, and report \
+the flag. It has the form FLAG{{...}}."""
+files = ["fixtures/xorflag"]
+[task.judge]
+contains = ["FLAG{xor_ok}"]
+
+[[task]]
+id = "add-cipher"
+prompt = """
+{ws}/addcipher prints a credential that is obfuscated in the binary (each byte \
+shifted by a constant). Use {tool} to recover the plaintext credential, which looks \
+like user:password. Report it verbatim."""
+files = ["fixtures/addcipher"]
+[task.judge]
+contains = ["admin:hunter2"]
+excludes = ["hunter20", "hunter21"]
+
+[[task]]
+id = "calls-system"
+prompt = """
+Exactly one function in {ws}/syscaller calls libc system(). Use {tool} to find it \
+and report that function's start address as a hex value like 0x401234. Also say \
+which library function it passes control to."""
+files = ["fixtures/syscaller"]
+timeout = 1200
+[task.judge]
+# The caller is spawn_shell at 0x848 in the prebuilt fixture: IDA loads the
+# PIE at 0, Binary Ninja at 0x400000. Rebuilding the fixture moves it.
+regex = "0x(0*848|400848)\\b"
+contains = ["system"]
+
+[[task]]
+id = "rename-save"
+prompt = """
+In {ws}/renameme there is a small helper that main calls, which computes a + b + 1. \
+Use {tool} to find that function, rename it to decrypt_me, and save the database so \
+the name persists. Report the address you renamed."""
+files = ["fixtures/renameme"]
+timeout = 1200
+[task.judge]
+command = ["sh", "{suite}/fixtures/check_rename.sh"]
+
+[[task]]
+id = "spill-needle"
+prompt = """
+{ws}/manyfuncs has about 60 functions. Exactly one of them returns a distinctive \
+string constant containing the token needle_ followed by hex. List the strings or \
+functions with {tool}, page through the output if it is truncated, and report the full token."""
+files = ["fixtures/manyfuncs"]
+timeout = 1200
+[task.judge]
+contains = ["needle_7f3a_marker"]
+
+[[task]]
+id = "long-function"
+prompt = """
+{ws}/longfunc builds a secret string at runtime inside one very large \
+function; the string is never stored whole in the binary. Use {tool} to read \
+that function, work out what it writes and how main prints it, and report the \
+string. It has the form LONG{{...}}."""
+files = ["fixtures/longfunc"]
+timeout = 1200
+[task.judge]
+# The function decompiles to ~930 lines (~40 KB): far past the 8 KB agent
+# window, so the answer is only in the spilled full output. Its bytes are
+# stored two apart in shuffled order, so no single line holds the string.
+contains = ["LONG{spill_files_are_read_9b2e}"]
+
+# --- Groups ----------------------------------------------------------------
+# `ref` points the agent at the engine's install dir (Python API, examples) to
+# grep, so every group may read and search anywhere except other agents'
+# homes, which each adapter denies on its own.
+
+# Smoke: the cheapest model of each harness, one task.
+[[group]]
+name = "smoke-claude"
+harness = "claude"
+model = "haiku"
+tools = ["Bash", "Read", "Grep", "Glob", "Write", "Edit"]
+max_turns = 30
+
+[[group]]
+name = "smoke-codex"
+harness = "codex"
+# The user's default model at low effort, so a smoke run stays cheap.
+args = ["-c", "model_reasoning_effort=\"low\""]
+
+[[group]]
+name = "smoke-grok"
+harness = "grok"
+allow = ["Bash(bnx *)", "Bash(grep *)", "Bash(head *)", "Read", "Grep"]
+max_turns = 30
+
+# Full eval: each harness with and without the bnx skill. Claude Code runs
+# with dontAsk, so anything not allowed is refused: `cd <ws> && bnx ...`,
+# temporary scripts written in the workspace and the usual read-only shell
+# tools are allowed, as an agent would use them.
+[[group]]
+name = "claude"
+harness = "claude"
+model = "sonnet"
+tools = ["Bash", "Read", "Grep", "Glob", "Write", "Edit"]
+max_turns = 40
+
+[[group]]
+name = "claude-skill"
+harness = "claude"
+model = "sonnet"
+skill = { command = "bnx skills", name = "bnx" }
+tools = ["Bash", "Read", "Grep", "Glob", "Write", "Edit"]
+max_turns = 40
+
+[[group]]
+name = "codex"
+harness = "codex"
+
+[[group]]
+name = "codex-skill"
+harness = "codex"
+skill = { command = "bnx skills", name = "bnx" }
+
+[[group]]
+name = "grok"
+harness = "grok"
+allow = ["Bash(bnx *)", "Bash(grep *)", "Bash(head *)", "Read", "Grep"]
+max_turns = 40
+
+[[group]]
+name = "grok-skill"
+harness = "grok"
+skill = { command = "bnx skills", name = "bnx" }
+allow = ["Bash(bnx *)", "Bash(grep *)", "Bash(head *)", "Read", "Grep"]
+max_turns = 40
+
+# --- CLI vs MCP --------------------------------------------------------------
+# The same tasks through bn-headless-mcp instead of bnx. Its build is
+# machine-specific: AXEVAL_BN_HEADLESS_MCP names the executable. The agent gets
+# no CLI on PATH and no shell where the harness allows that: claude without
+# Bash, grok without its terminal, codex with a read-only sandbox.
+[[group]]
+name = "claude-bhmcp"
+harness = "claude"
+model = "sonnet"
+tools = ["Read", "Grep", "Glob"]
+max_turns = 40
+bare_path = true
+tool = "the Binary Ninja tools of the MCP server `binja`"
+rules = """
+Use only the MCP tools of server `binja` for the analysis. Do not run Binary \
+Ninja, Python or any other analysis program yourself."""
+mcp = { name = "binja", command = "{env:AXEVAL_BN_HEADLESS_MCP}", args = ["serve", "--mode", "stdio"] }
+
+[[group]]
+name = "codex-bhmcp"
+harness = "codex"
+sandbox = "read-only"
+bare_path = true
+tool = "the Binary Ninja tools of the MCP server `binja`"
+rules = """
+Use only the MCP tools of server `binja` for the analysis. Do not run Binary \
+Ninja, Python or any other analysis program yourself; shell commands are only \
+for viewing files."""
+mcp = { name = "binja", command = "{env:AXEVAL_BN_HEADLESS_MCP}", args = ["serve", "--mode", "stdio"] }
+
+[[group]]
+name = "grok-bhmcp"
+harness = "grok"
+tools = ["read_file", "grep", "list_dir"]
+max_turns = 40
+bare_path = true
+tool = "the Binary Ninja tools of the MCP server `binja`"
+rules = """
+Use only the MCP tools of server `binja` for the analysis. Do not run Binary \
+Ninja, Python or any other analysis program yourself."""
+mcp = { name = "binja", command = "{env:AXEVAL_BN_HEADLESS_MCP}", args = ["serve", "--mode", "stdio"] }
+
+# --- bnx as a code-mode MCP server ------------------------------------------
+# `bnx mcp`: the same engine and daemon as the CLI behind a stdio MCP server
+# (tools exec, ref, save, close, list). Set up like the MCP groups above: no
+# CLI on PATH, no skill, no shell where the harness allows that. The server
+# shares the run's runtime dir, so the suite's teardown stops its daemon.
+[[group]]
+name = "claude-mcp"
+harness = "claude"
+model = "sonnet"
+tools = ["Read", "Grep", "Glob"]
+max_turns = 40
+bare_path = true
+tool = "the tools of the MCP server `bnx`"
+rules = """
+Use only the MCP tools of server `bnx` for the analysis. Do not run Binary Ninja, \
+Python or any other analysis program yourself."""
+mcp = { name = "bnx", command = "{suite}/../target/debug/bnx", args = ["mcp"], env = { BNX_RUNTIME_DIR = "{tmp}/rt", XDG_CACHE_HOME = "{tmp}/cache", AXKIT_AGENT = "on" } }
+
+[[group]]
+name = "codex-mcp"
+harness = "codex"
+sandbox = "read-only"
+bare_path = true
+tool = "the tools of the MCP server `bnx`"
+rules = """
+Use only the MCP tools of server `bnx` for the analysis. Do not run Binary Ninja, \
+Python or any other analysis program yourself; shell commands are only for \
+viewing files."""
+mcp = { name = "bnx", command = "{suite}/../target/debug/bnx", args = ["mcp"], env = { BNX_RUNTIME_DIR = "{tmp}/rt", XDG_CACHE_HOME = "{tmp}/cache", AXKIT_AGENT = "on" } }
+
+[[group]]
+name = "grok-mcp"
+harness = "grok"
+tools = ["read_file", "grep", "list_dir"]
+max_turns = 40
+bare_path = true
+tool = "the tools of the MCP server `bnx`"
+rules = """
+Use only the MCP tools of server `bnx` for the analysis. Do not run Binary Ninja, \
+Python or any other analysis program yourself."""
+mcp = { name = "bnx", command = "{suite}/../target/debug/bnx", args = ["mcp"], env = { BNX_RUNTIME_DIR = "{tmp}/rt", XDG_CACHE_HOME = "{tmp}/cache", AXKIT_AGENT = "on" } }

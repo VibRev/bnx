@@ -1,0 +1,34 @@
+[package]
+name = "bnx"
+version = "0.2.0"
+edition = "2024"
+rust-version = "1.95"
+description = "Agent-first CLI for Binary Ninja: sessions in a daemon, Python in the engine"
+license = "Apache-2.0"
+repository = "https://github.com/VibRev/bnx"
+keywords = ["reverse-engineering", "cli", "agent", "binary-ninja"]
+categories = ["command-line-utilities"]
+
+[dependencies]
+axkit = { version = "0.1.0", path = "../axkit" }
+binaryninja = { git = "https://github.com/Vector35/binaryninja-api.git", rev = "775c3b5eed8598217b20e1087afe7aa092a9b4b1", version = "0.1.0" }
+binaryninjacore-sys = { git = "https://github.com/Vector35/binaryninja-api.git", rev = "775c3b5eed8598217b20e1087afe7aa092a9b4b1", version = "0.1.0" }
+libc = "0.2.191"
+rex = { path = "../rex" }
+serde_json = { version = "1.0.154", features = ["preserve_order"] }
+thiserror = "2.0.21"
+
+[dev-dependencies]
+tempfile = "3.27.0"
+
+[lints.clippy]
+unwrap_used = "warn"
+cast_possible_truncation = "warn"
+needless_pass_by_value = "warn"
+fn_params_excessive_bools = "warn"
+undocumented_unsafe_blocks = "warn"
+missing_errors_doc = "warn"
+missing_panics_doc = "warn"
+wildcard_imports = "warn"
+return_self_not_must_use = "warn"
+
