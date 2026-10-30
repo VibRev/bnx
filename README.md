@@ -15,15 +15,22 @@ bnx save fw.bin && bnx close fw.bin
 
 ## 获取与构建
 
-bnx 通过 `path = "../rex"`、`path = "../axkit"` 依赖另外两个仓库，三个仓库要 clone 到同一个父目录下：
+bnx 以 git 依赖固定在 rex 和 axkit 的某个提交上，构建只需要 bnx 本身：
 
 ```sh
-mkdir VibRev && cd VibRev
-git clone https://github.com/VibRev/axkit
-git clone https://github.com/VibRev/rex
 git clone https://github.com/VibRev/bnx
 cd bnx && BINARYNINJADIR=/path/to/binaryninja cargo build --release
 ```
+
+- **测试**要用 rex 的 fixture（`../rex/fixtures`），跑测试时把 rex clone 到同一个父目录下。
+- **联调本地的 rex / axkit**：不用改 `Cargo.toml`，在 `.cargo/config.toml` 里加：
+
+  ```toml
+  [patch."https://github.com/VibRev/rex.git"]
+  rex = { path = "../rex" }
+  [patch."https://github.com/VibRev/axkit.git"]
+  axkit = { path = "../axkit" }
+  ```
 
 - **只支持 Binary Ninja 6.0 R2**（`stable/6.0.10905`，API 提交 `775c3b5e`）。
   - `binaryninja` 和 `binaryninjacore-sys` 以 git 依赖固定在这个提交，与安装目录里 `api_REVISION.txt` 记录的一致。

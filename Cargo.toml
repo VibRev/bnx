@@ -10,10 +10,10 @@ keywords = ["reverse-engineering", "cli", "agent", "binary-ninja"]
 categories = ["command-line-utilities"]
 
 [dependencies]
-axkit = { version = "0.1.0", path = "../axkit" }
+axkit = { git = "https://github.com/VibRev/axkit.git", rev = "68a6e9e0aadd0b798b0af7d37020f261d5669a63", version = "0.1.0" }
 binaryninja = { git = "https://github.com/Vector35/binaryninja-api.git", rev = "775c3b5eed8598217b20e1087afe7aa092a9b4b1", version = "0.1.0" }
 binaryninjacore-sys = { git = "https://github.com/Vector35/binaryninja-api.git", rev = "775c3b5eed8598217b20e1087afe7aa092a9b4b1", version = "0.1.0" }
-rex = { path = "../rex" }
+rex = { git = "https://github.com/VibRev/rex.git", rev = "ebe81007bd9b01e9d3fe941f60a784e9083144fd", version = "0.1.0" }
 serde_json = { version = "1.0.154", features = ["preserve_order"] }
 thiserror = "2.0.21"
 
